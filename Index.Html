@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Peta Rawan Kecelakaan Kota Bandar Lampung</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{--ungu:#663d9a;--gelap:#262626;--teks:#fff}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:"Avenir Next","Segoe UI",Roboto,Arial,sans-serif}
+body{display:flex;flex-direction:column;background:#eee}
+header{background:var(--ungu);color:var(--teks);display:flex;align-items:center;gap:14px;padding:0 20px;height:56px;flex:none}
+header h1{font-size:clamp(14px,2vw,26px);margin:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .sub{border-left:1px solid rgba(255,255,255,.5);padding-left:16px;font-size:clamp(12px,1.4vw,19px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+header button{background:none;border:0;color:#fff;font-size:22px;cursor:pointer;margin-left:auto}
+#wrap{position:relative;flex:1;min-height:0}
+#map{position:absolute;inset:0}
+.leaflet-control-zoom{display:none}
+#kiri{position:absolute;left:10px;top:12px;z-index:900;display:flex;flex-direction:column;gap:6px}
+#kiri button{width:36px;height:36px;border:0;background:var(--gelap);color:#fff;font-size:17px;cursor:pointer}
+#kiri button:hover,#bawah button:hover{background:#444}
+#kiri .gap{height:8px}
+#bawah{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);z-index:900;display:flex;background:var(--gelap);border-radius:4px;max-width:calc(100% - 20px);overflow-x:auto}
+#bawah button{background:none;border:0;border-right:1px solid #444;color:#fff;padding:12px 16px 10px;min-width:84px;cursor:pointer;font-size:14px;position:relative;font-family:inherit}
+#bawah button:last-child{border-right:0}
+#bawah button.aktif{background:#4a3a66}
+#bawah svg{display:block;margin:0 auto 6px;width:30px;height:30px;stroke:#fff;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.badge{position:absolute;top:2px;right:12px;background:#a8dcf5;color:#123;border-radius:50%;width:22px;height:22px;font-size:13px;display:grid;place-items:center;font-weight:600}
+#panel{position:absolute;left:50%;bottom:112px;transform:translateX(-50%);z-index:950;background:var(--gelap);color:#fff;border-radius:4px;padding:14px 16px;width:min(360px,calc(100% - 20px));max-height:50%;overflow:auto;display:none;font-size:14px}
+#panel h3{margin:0 0 10px;font-size:16px;font-weight:600}
+#panel label{display:flex;gap:8px;align-items:center;padding:5px 0;cursor:pointer}
+#panel button.s,#panel .file{background:#7a4cb8;color:#fff;border:0;padding:7px 12px;border-radius:3px;cursor:pointer;margin:4px 6px 0 0;font-family:inherit;font-size:13px;display:inline-flex}
+#panel p{margin:6px 0;color:#ddd;line-height:1.45}
+.sw{display:inline-block;width:18px;height:12px;border-radius:2px;flex:none}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;flex:none}
+.leg{display:flex;align-items:center;gap:10px;padding:4px 0}
+#cari{position:absolute;left:54px;top:12px;z-index:900;display:none}
+#cari input{height:36px;width:min(260px,60vw);padding:0 10px;border:0;font-size:14px;font-family:inherit}
+#info{position:absolute;right:12px;top:12px;z-index:950;background:#fff;width:min(320px,calc(100% - 24px));padding:14px 16px;border-radius:4px;box-shadow:0 2px 10px #0004;display:none;font-size:14px;line-height:1.5}
+#info h3{margin:0 0 6px}
+.pop b{display:block;font-size:15px;margin-bottom:2px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Kelompok 5 Geografi Penduduk: PETA RAWAN KECELAKAAN KOTA BANDAR LAMPUNG</h1>
+  <span class="sub">Peta Rawan Kecelakaan di Kota Bandar Lampung</span>
+  <button id="btnInfo" title="Tentang peta" aria-label="Tentang peta">ⓘ</button>
+</header>
+
+<div id="wrap">
+  <div id="map"></div>
+
+  <div id="kiri">
+    <button id="bCari" title="Cari lokasi">🔍</button>
+    <button id="bKey" title="Pintasan keyboard">⌨</button>
+    <button id="bHome" title="Tampilan awal">⌂</button>
+    <div class="gap"></div>
+    <button id="bIn" title="Perbesar">+</button>
+    <button id="bOut" title="Perkecil">−</button>
+    <div class="gap"></div>
+    <button id="bLoc" title="Lokasi saya">◎</button>
+    <button id="bFull" title="Layar penuh">⛶</button>
+  </div>
+  <div id="cari"><input id="qCari" placeholder="Cari titik rawan, mis. Teuku Umar" list="dl"><datalist id="dl"></datalist></div>
+
+  <div id="info">
+    <h3>Tentang peta</h3>
+    <p>Peta ini menampilkan titik rawan kecelakaan lalu lintas di Kota Bandar Lampung. Data titik, jumlah kejadian, dan batas wilayah di sini masih contoh; ganti dengan data lapangan atau data kepolisian kelompok Anda.</p>
+  </div>
+
+  <div id="panel"></div>
+
+  <nav id="bawah" aria-label="Alat peta">
+    <button data-p="basemap"><svg viewBox="0 0 32 32"><rect x="4" y="4" width="10" height="10"/><rect x="18" y="4" width="10" height="10"/><rect x="4" y="18" width="10" height="10"/><rect x="18" y="18" width="10" height="10"/></svg>Basemaps</button>
+    <button data-p="buka"><svg viewBox="0 0 32 32"><rect x="4" y="4" width="24" height="24"/><path d="M8 22l6-8 4 5 4-9"/></svg>Open map</button>
+    <button data-p="layer"><svg viewBox="0 0 32 32"><path d="M3 12l13-7 13 7-13 7z"/><path d="M3 18l13 7 13-7"/></svg>Map layers<span class="badge" id="nLayer">3</span></button>
+    <button data-p="tambah"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12"/><path d="M16 9v14M9 16h14"/></svg>Add layer</button>
+    <button data-p="legenda"><svg viewBox="0 0 32 32"><path d="M12 8h16M12 16h16M12 24h16"/><rect x="4" y="6" width="4" height="4"/><rect x="4" y="14" width="4" height="4"/><rect x="4" y="22" width="4" height="4"/></svg>Legend</button>
+    <button data-p="ukur"><svg viewBox="0 0 32 32"><rect x="3" y="12" width="26" height="9"/><path d="M8 12v4M13 12v4M18 12v4M23 12v4"/></svg>Measure</button>
+    <button data-p="elev"><svg viewBox="0 0 32 32"><path d="M16 3v26M12 7l4-4 4 4M3 26l9-12 5 6 4-5 8 11"/></svg>Elevation</button>
+    <button data-p="sketsa"><svg viewBox="0 0 32 32"><path d="M5 27l3-8L22 5l5 5L13 24z"/><path d="M19 8l5 5"/></svg>Sketch</button>
+    <button data-p="simpan"><svg viewBox="0 0 32 32"><path d="M5 5h18l4 4v18H5z"/><rect x="10" y="5" width="10" height="7"/><rect x="9" y="18" width="14" height="9"/></svg>Save</button>
+  </nav>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ============ DATA CONTOH (ganti dengan data Anda) ============ */
+// Batas kota (perkiraan kasar, bukan batas administrasi resmi)
+const batasKota=[[-5.345,105.255],[-5.350,105.275],[-5.365,105.295],[-5.385,105.310],[-5.400,105.320],[-5.420,105.325],[-5.440,105.335],[-5.455,105.320],[-5.470,105.300],[-5.490,105.285],[-5.500,105.265],[-5.480,105.250],[-5.465,105.240],[-5.450,105.225],[-5.430,105.210],[-5.410,105.205],[-5.390,105.210],[-5.370,105.230]];
+// Jaringan jalan utama (perkiraan)
+const jalan=[
+ [[-5.3650,105.2330],[-5.3800,105.2420],[-5.3930,105.2500],[-5.4130,105.2560],[-5.4297,105.2625]],
+ [[-5.4297,105.2625],[-5.4400,105.2700],[-5.4550,105.2850],[-5.4720,105.3150]],
+ [[-5.3930,105.2370],[-5.3930,105.2500],[-5.4000,105.2650],[-5.3850,105.2900]],
+ [[-5.4130,105.2560],[-5.4000,105.2650],[-5.3850,105.2900],[-5.3750,105.3050]],
+ [[-5.4200,105.2300],[-5.4130,105.2560],[-5.4108,105.2800],[-5.4250,105.3000]],
+ [[-5.3650,105.2650],[-5.3850,105.2900],[-5.4108,105.2800]]
+];
+// Titik rawan: nama, lat, lon, kejadian/tahun, tingkat
+const titik=[
+ ["Simpang Tugu Adipura (Jl. Ahmad Yani)",-5.4297,105.2625,34,"Tinggi"],
+ ["Jl. Teuku Umar",-5.4130,105.2560,28,"Tinggi"],
+ ["Jl. Soekarno-Hatta (Rajabasa)",-5.3650,105.2330,25,"Tinggi"],
+ ["Simpang Kimaja",-5.4108,105.2656,18,"Sedang"],
+ ["Jl. Z.A. Pagar Alam (Kedaton)",-5.3930,105.2370,16,"Sedang"],
+ ["Jl. Sultan Agung (Way Halim)",-5.3850,105.2900,12,"Sedang"],
+ ["Jl. Yos Sudarso (Panjang)",-5.4720,105.3150,22,"Tinggi"],
+ ["Jl. Ryacudu (Way Halim)",-5.3750,105.3050,8,"Rendah"],
+ ["Jl. Imam Bonjol",-5.4200,105.2300,7,"Rendah"]
+];
+const warna={Tinggi:"#d7191c",Sedang:"#fdae61",Rendah:"#2b83ba"};
+
+/* ============ PETA ============ */
+const map=L.map("map",{zoomControl:false,center:[-5.425,105.265],zoom:12});
+const dasar={
+ "Topografi":L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",{attribution:"Esri | TomTom | Garmin | NASA | NGA | USGS"}),
+ "Jalan (OSM)":L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap"}),
+ "Citra satelit":L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{attribution:"Esri | Maxar"}),
+ "Abu-abu terang":L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",{attribution:"Esri"})
+};
+let dasarAktif="Topografi"; dasar[dasarAktif].addTo(map);
+
+const lyBatas=L.polygon(batasKota,{color:"#14633c",weight:1,fillColor:"#1f8a54",fillOpacity:.95});
+const lyJalan=L.layerGroup(jalan.map(j=>L.polyline(j,{color:"#f08a00",weight:2.5,opacity:.9})));
+const lyTitik=L.layerGroup(titik.map(t=>L.circleMarker([t[1],t[2]],{radius:6+t[3]/5,color:"#fff",weight:1.5,fillColor:warna[t[4]],fillOpacity:.95})
+  .bindPopup(`<div class="pop"><b>${t[0]}</b>Kejadian per tahun: ${t[3]}<br>Tingkat kerawanan: ${t[4]}</div>`)));
+const lapisan=[{nama:"Batas Kota Bandar Lampung",ly:lyBatas},{nama:"Jaringan Jalan",ly:lyJalan},{nama:"Titik Rawan Kecelakaan",ly:lyTitik}];
+lapisan.forEach(l=>l.ly.addTo(map));
+map.fitBounds(lyBatas.getBounds(),{padding:[40,40]});
+const sketsa=L.featureGroup().addTo(map), ukur=L.featureGroup().addTo(map);
+const dl=document.getElementById("dl");
+titik.forEach(t=>dl.insertAdjacentHTML("beforeend",`<option value="${t[0]}">`));
+
+/* ============ KONTROL KIRI ============ */
+const $=id=>document.getElementById(id);
+$("bIn").onclick=()=>map.zoomIn(); $("bOut").onclick=()=>map.zoomOut();
+$("bHome").onclick=()=>map.fitBounds(lyBatas.getBounds(),{padding:[40,40]});
+$("bLoc").onclick=()=>map.locate({setView:true,maxZoom:16});
+map.on("locationfound",e=>L.circleMarker(e.latlng,{radius:8,color:"#fff",fillColor:"#0a74da",fillOpacity:1}).addTo(map).bindPopup("Lokasi Anda").openPopup());
+map.on("locationerror",()=>alert("Lokasi tidak bisa diakses. Izinkan akses lokasi di browser."));
+$("bFull").onclick=()=>document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();
+$("bCari").onclick=()=>{const c=$("cari");c.style.display=c.style.display==="block"?"none":"block";if(c.style.display==="block")$("qCari").focus()};
+$("qCari").addEventListener("change",e=>{const t=titik.find(x=>x[0].toLowerCase().includes(e.target.value.toLowerCase()));if(t){map.setView([t[1],t[2]],16);lyTitik.eachLayer(m=>{if(m.getLatLng().lat===t[1])m.openPopup()})}});
+$("bKey").onclick=()=>openPanel("key");
+$("btnInfo").onclick=()=>{const i=$("info");i.style.display=i.style.display==="block"?"none":"block"};
+
+/* ============ PANEL BAWAH ============ */
+const panel=$("panel"); let mode=null, aktifP=null, ptsUkur=[], ptsSketsa=[];
+const isi={
+ key:()=>`<h3>Pintasan keyboard</h3><p>Panah: geser peta<br>+ / −: perbesar / perkecil<br>Shift + seret: zoom ke kotak<br>Esc: tutup panel</p>`,
+ basemap:()=>`<h3>Basemaps</h3>`+Object.keys(dasar).map(n=>`<label><input type="radio" name="bm" value="${n}" ${n===dasarAktif?"checked":""}> ${n}</label>`).join(""),
+ layer:()=>`<h3>Map layers</h3>`+lapisan.map((l,i)=>`<label><input type="checkbox" data-i="${i}" ${map.hasLayer(l.ly)?"checked":""}> ${l.nama}</label>`).join(""),
+ legenda:()=>`<h3>Legend</h3><div class="leg"><span class="sw" style="background:#1f8a54"></span>Wilayah Kota Bandar Lampung</div><div class="leg"><span class="sw" style="background:#f08a00;height:3px"></span>Jaringan jalan</div><p style="margin-top:10px">Tingkat kerawanan (ukuran titik = jumlah kejadian)</p>`+Object.entries(warna).map(([k,v])=>`<div class="leg"><span class="dot" style="background:${v}"></span>${k}</div>`).join(""),
+ buka:()=>`<h3>Open map</h3><p>Buka berkas GeoJSON dan tampilkan sebagai lapisan baru.</p><label class="file">Pilih berkas GeoJSON<input type="file" id="fBuka" accept=".json,.geojson" hidden></label>`,
+ tambah:()=>`<h3>Add layer</h3><p>Klik tombol di bawah, lalu klik peta untuk menambah titik kejadian baru.</p><button class="s" id="addTitik">Tambah titik kejadian</button><br><label class="file">Unggah GeoJSON<input type="file" id="fTambah" accept=".json,.geojson" hidden></label>`,
+ ukur:()=>`<h3>Measure</h3><p>Klik peta untuk membuat titik pengukuran jarak.</p><p id="hasilUkur">Jarak: 0 m</p><button class="s" id="resetUkur">Hapus ukuran</button>`,
+ elev:()=>`<h3>Elevation</h3><p>Klik di peta untuk melihat ketinggian lokasi (butuh koneksi internet).</p><p id="hasilElev">Belum ada titik dipilih.</p>`,
+ sketsa:()=>`<h3>Sketch</h3><p>Klik peta untuk menggambar garis. Klik tombol Selesai untuk mengakhiri satu gambar.</p><button class="s" id="selesaiSketsa">Selesai</button><button class="s" id="hapusSketsa">Hapus sketsa</button>`,
+ simpan:()=>`<h3>Save</h3><p>Unduh titik rawan dan sketsa sebagai berkas GeoJSON.</p><button class="s" id="unduh">Unduh GeoJSON</button>`
+};
+function openPanel(k){
+  if(aktifP===k){closePanel();return}
+  aktifP=k;mode=null;panel.innerHTML=isi[k]();panel.style.display="block";
+  document.querySelectorAll("#bawah button").forEach(b=>b.classList.toggle("aktif",b.dataset.p===k));
+  if(k==="basemap")panel.querySelectorAll("input").forEach(i=>i.onchange=()=>{map.removeLayer(dasar[dasarAktif]);dasarAktif=i.value;dasar[dasarAktif].addTo(map).bringToBack()});
+  if(k==="layer")panel.querySelectorAll("input").forEach(i=>i.onchange=()=>{const l=lapisan[i.dataset.i].ly;i.checked?l.addTo(map):map.removeLayer(l);hitungLayer()});
+  if(k==="ukur"){mode="ukur";$("resetUkur").onclick=()=>{ukur.clearLayers();ptsUkur=[];$("hasilUkur").textContent="Jarak: 0 m"}}
+  if(k==="elev")mode="elev";
+  if(k==="sketsa"){mode="sketsa";$("selesaiSketsa").onclick=()=>{ptsSketsa=[]};$("hapusSketsa").onclick=()=>{sketsa.clearLayers();ptsSketsa=[]}}
+  if(k==="tambah"){$("addTitik").onclick=()=>{mode="tambah";$("addTitik").textContent="Klik peta…"};$("fTambah").onchange=e=>muatBerkas(e.target.files[0])}
+  if(k==="buka")$("fBuka").onchange=e=>muatBerkas(e.target.files[0]);
+  if(k==="simpan")$("unduh").onclick=unduh;
+}
+function closePanel(){aktifP=null;mode=null;panel.style.display="none";document.querySelectorAll("#bawah button").forEach(b=>b.classList.remove("aktif"))}
+document.querySelectorAll("#bawah button").forEach(b=>b.onclick=()=>openPanel(b.dataset.p));
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closePanel()});
+function hitungLayer(){$("nLayer").textContent=lapisan.filter(l=>map.hasLayer(l.ly)).length}
+
+/* ============ INTERAKSI PETA ============ */
+map.on("click",e=>{
+  if(mode==="ukur"){
+    ptsUkur.push(e.latlng);L.circleMarker(e.latlng,{radius:4,color:"#7a4cb8",fillOpacity:1}).addTo(ukur);
+    if(ptsUkur.length>1){L.polyline(ptsUkur.slice(-2),{color:"#7a4cb8",weight:3}).addTo(ukur)}
+    let d=0;for(let i=1;i<ptsUkur.length;i++)d+=ptsUkur[i-1].distanceTo(ptsUkur[i]);
+    $("hasilUkur").textContent="Jarak: "+(d>=1000?(d/1000).toFixed(2)+" km":Math.round(d)+" m");
+  }else if(mode==="sketsa"){
+    ptsSketsa.push(e.latlng);
+    if(ptsSketsa.length===1)L.circleMarker(e.latlng,{radius:4,color:"#d7191c"}).addTo(sketsa);
+    else L.polyline(ptsSketsa.slice(-2),{color:"#d7191c",weight:3}).addTo(sketsa);
+  }else if(mode==="elev"){
+    $("hasilElev").textContent="Mengambil data ketinggian…";
+    fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${e.latlng.lat},${e.latlng.lng}`).then(r=>r.json())
+     .then(d=>$("hasilElev").textContent=`Ketinggian: ${d.results[0].elevation} m dpl (${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)})`)
+     .catch(()=>$("hasilElev").textContent="Data ketinggian tidak dapat diambil. Periksa koneksi internet.");
+  }else if(mode==="tambah"){
+    const nama=prompt("Nama lokasi kejadian:");if(!nama)return;
+    const n=parseInt(prompt("Jumlah kejadian per tahun:","1"))||1;
+    const tk=n>=20?"Tinggi":n>=10?"Sedang":"Rendah";
+    titik.push([nama,e.latlng.lat,e.latlng.lng,n,tk]);
+    L.circleMarker(e.latlng,{radius:6+n/5,color:"#fff",weight:1.5,fillColor:warna[tk],fillOpacity:.95}).bindPopup(`<div class="pop"><b>${nama}</b>Kejadian per tahun: ${n}<br>Tingkat kerawanan: ${tk}</div>`).addTo(lyTitik);
+    mode=null;$("addTitik").textContent="Tambah titik kejadian";
+  }
+});
+function muatBerkas(f){
+  if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const ly=L.geoJSON(JSON.parse(r.result),{style:{color:"#0a74da",weight:3}}).addTo(map);
+    lapisan.push({nama:f.name,ly});map.fitBounds(ly.getBounds());hitungLayer();closePanel()}catch(e){alert("Berkas GeoJSON tidak valid.")}};
+  r.readAsText(f);
+}
+function unduh(){
+  const fitur=titik.map(t=>({type:"Feature",properties:{nama:t[0],kejadian:t[3],kerawanan:t[4]},geometry:{type:"Point",coordinates:[t[2],t[1]]}}));
+  sketsa.eachLayer(l=>{if(l.toGeoJSON)fitur.push(l.toGeoJSON())});
+  const blob=new Blob([JSON.stringify({type:"FeatureCollection",features:fitur},null,2)],{type:"application/geo+json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="rawan-kecelakaan-bandar-lampung.geojson";a.click();
+}
+</script>
+</body>
+</html>
